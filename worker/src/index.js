@@ -136,6 +136,7 @@ async function runDue(env) {
     let res;
     try { res = await remind(env, row); } catch (e) { res = { status: 0, text: String(e) }; }
 
+    console.log('push', new URL(row.endpoint).host, res.status, res.text);
     if (res.status === 404 || res.status === 410) {
       stmts.push(env.DB.prepare('DELETE FROM subs WHERE id = ?').bind(row.id)); // trình duyệt đã huỷ đăng ký
     } else if (res.status >= 200 && res.status < 300) {
@@ -221,6 +222,7 @@ async function handle(req, env, path) {
 
   if (path === '/test') {
     const res = await remind(env, row, { test: true });
+    console.log('test push', new URL(row.endpoint).host, res.status, res.text);
     if (res.status === 404 || res.status === 410) {
       await env.DB.prepare('DELETE FROM subs WHERE id = ?').bind(row.id).run();
       throw new HttpError(410, 'Đăng ký đã hết hạn, hãy bật lại thông báo');
