@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b84d8">
+  <meta name="description" content="Nhắc bạn uống đủ 2 lít nước mỗi ngày.">
+  <!-- iPhone: cho phép chạy như ứng dụng khi thêm vào Màn hình chính (bắt buộc để có thông báo) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Giọt Nước">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Giọt Nước – Nhắc uống nước</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ============ ĐĂNG KÝ ============ -->
+  <section id="onboarding" class="screen onboarding" hidden>
+    <div class="ob-hero">
+      <img src="icon.svg" alt="" class="ob-logo">
+      <h1>Giọt Nước</h1>
+      <p>Mỗi ngày 2 lít nước – mình sẽ nhắc bạn đúng lúc.</p>
+    </div>
+    <form id="profileForm" class="card form" autocomplete="off">
+      <h2 class="form-title">Đăng ký nhận nhắc nhở</h2>
+      <label class="field">
+        <span>Họ và tên</span>
+        <input name="name" required maxlength="40" placeholder="VD: Nguyễn Minh">
+      </label>
+
+      <div class="row-2">
+        <label class="field">
+          <span>Mục tiêu / ngày (ml)</span>
+          <input name="goal" type="number" min="1000" max="4000" step="100" value="2000" required>
+        </label>
+        <label class="field">
+          <span>Cốc của bạn</span>
+          <select name="cup">
+            <option value="150">150 ml</option>
+            <option value="200">200 ml</option>
+            <option value="250" selected>250 ml</option>
+            <option value="300">300 ml</option>
+            <option value="500">500 ml</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="row-2">
+        <label class="field">
+          <span>Giờ thức dậy</span>
+          <input name="wake" type="time" value="06:30" required>
+        </label>
+        <label class="field">
+          <span>Giờ đi ngủ</span>
+          <input name="sleep" type="time" value="22:30" required>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Nhắc mỗi</span>
+        <select name="interval">
+          <option value="30">30 phút</option>
+          <option value="45">45 phút</option>
+          <option value="60" selected>60 phút</option>
+          <option value="90">90 phút</option>
+          <option value="120">120 phút</option>
+        </select>
+      </label>
+
+      <label class="switch-row" data-settings-only>
+        <span>Âm báo khi nhắc</span>
+        <input type="checkbox" name="sound" class="switch" checked>
+      </label>
+
+      <button type="submit" class="btn btn-primary btn-block" id="profileSubmit">Bắt đầu uống nước 💧</button>
+    </form>
+  </section>
+
+  <!-- ============ ỨNG DỤNG ============ -->
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <div>
+        <p class="hello" id="hello">Chào bạn</p>
+        <p class="date" id="todayLabel"></p>
+      </div>
+      <div class="avatar" id="avatar" aria-hidden="true">?</div>
+    </header>
+
+    <div id="permBanner" class="banner" hidden>
+      <span>🔔 Bật thông báo để được nhắc uống nước kể cả khi bạn đang ở tab khác.</span>
+      <button class="btn btn-small btn-primary" id="enableNotif">Bật</button>
+    </div>
+
+    <!-- iPhone/iPad: Safari chỉ cho thông báo khi trang được thêm vào Màn hình chính -->
+    <div id="iosBanner" class="banner banner-info" hidden>
+      <span>📱 <b>Trên iPhone:</b> bấm nút <b>Chia sẻ</b> <span aria-hidden="true">⬆️</span> → <b>Thêm vào MH chính</b>, rồi mở Giọt Nước từ biểu tượng mới để bật thông báo.</span>
+    </div>
+
+    <!-- Android/máy tính: gợi ý cài ứng dụng để thông báo ổn định hơn -->
+    <div id="installBanner" class="banner banner-info" hidden>
+      <span>📲 Cài Giọt Nước lên màn hình chính để nhận nhắc nhở ổn định hơn.</span>
+      <button class="btn btn-small btn-primary" id="installBtn">Cài đặt</button>
+    </div>
+
+    <main>
+      <!-- HÔM NAY -->
+      <section class="screen" id="tab-today" data-tab="today">
+        <div class="card hero">
+          <div class="bottle" aria-hidden="true">
+            <div class="bottle-cap"></div>
+            <div class="bottle-body">
+              <div class="water" id="water">
+                <svg class="wave" viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0 10 Q 25 0 50 10 T 100 10 T 150 10 T 200 10 V20 H0Z"/></svg>
+              </div>
+              <div class="marks"><i></i><i></i><i></i></div>
+            </div>
+          </div>
+          <div class="hero-stats">
+            <p class="big"><span id="drunk">0</span><small> ml</small></p>
+            <p class="muted">trên <span id="goalLabel">2000</span> ml</p>
+            <p class="percent" id="percent">0%</p>
+            <p class="pace" id="pace"></p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>Thêm nước</h2>
+            <button class="btn-link" id="undoBtn" disabled>↶ Hoàn tác</button>
+          </div>
+          <div class="quick" id="quick"></div>
+          <form class="custom-add" id="customForm">
+            <input type="number" id="customMl" min="10" max="2000" step="10" placeholder="Nhập số ml khác" aria-label="Số ml tùy chỉnh">
+            <button class="btn btn-ghost" type="submit">Thêm</button>
+          </form>
+        </div>
+
+        <div class="card reminder-card">
+          <div>
+            <p class="muted small">Lần nhắc tiếp theo</p>
+            <p class="countdown" id="countdown">--:--</p>
+            <p class="muted small" id="nextAtLabel"></p>
+          </div>
+          <button class="btn btn-ghost nowrap" id="pauseBtn" title="Tạm dừng nhắc trong 1 giờ">⏸ Hoãn 1 giờ</button>
+        </div>
+
+        <div class="card">
+          <h2>Hôm nay bạn đã uống</h2>
+          <ul class="timeline" id="timeline"></ul>
+        </div>
+      </section>
+
+      <!-- LỊCH SỬ -->
+      <section class="screen" id="tab-history" data-tab="history" hidden>
+        <div class="stats-grid">
+          <div class="stat"><p class="muted small">Chuỗi ngày đạt</p><p class="stat-v" id="statStreak">0</p></div>
+          <div class="stat"><p class="muted small">TB/ngày (ml)</p><p class="stat-v" id="statAvg">0</p></div>
+          <div class="stat"><p class="muted small">Ngày đạt / 7</p><p class="stat-v" id="statHit">0</p></div>
+        </div>
+
+        <div class="card">
+          <h2>Lượng nước 7 ngày qua</h2>
+          <p class="muted small">Đường nét đứt là mục tiêu mỗi ngày</p>
+          <div class="chart" id="chart"></div>
+          <div class="tooltip" id="tooltip" role="status" hidden></div>
+        </div>
+
+        <div class="card">
+          <h2>Huy hiệu</h2>
+          <div class="badges" id="badges"></div>
+        </div>
+      </section>
+
+      <!-- CÀI ĐẶT -->
+      <section class="screen" id="tab-settings" data-tab="settings" hidden>
+        <div id="settingsMount"></div>
+        <div class="card">
+          <h2>Thông báo</h2>
+          <p class="muted small" id="notifStatus"></p>
+          <p class="muted small" id="mobileTip" hidden>📱 Trên điện thoại, hệ điều hành tạm dừng trang khi bạn tắt màn hình hoặc chuyển sang ứng dụng khác. Hãy cài Giọt Nước lên màn hình chính và mở lại khi cần – lần nhắc bị lỡ sẽ hiện ngay khi bạn quay lại.</p>
+          <div class="btn-row">
+            <button class="btn btn-ghost" id="testNotif">🔔 Gửi thử thông báo</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Dữ liệu</h2>
+          <p class="muted small">Dữ liệu chỉ được lưu trên thiết bị này.</p>
+          <div class="btn-row">
+            <button class="btn btn-ghost" id="exportBtn">⬇ Xuất dữ liệu</button>
+            <button class="btn btn-danger" id="resetBtn">Xóa toàn bộ</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="tabbar" aria-label="Điều hướng">
+      <button data-go="today" class="active"><span>💧</span>Hôm nay</button>
+      <button data-go="history"><span>📊</span>Lịch sử</button>
+      <button data-go="settings"><span>⚙️</span>Cài đặt</button>
+    </nav>
+  </div>
+
+  <!-- Hộp nhắc trong trang (dự phòng khi không có thông báo hệ thống) -->
+  <div class="modal" id="reminderModal" hidden role="dialog" aria-modal="true" aria-labelledby="remTitle">
+    <div class="modal-box">
+      <div class="modal-drop">💧</div>
+      <h3 id="remTitle">Đến giờ uống nước rồi!</h3>
+      <p id="remBody"></p>
+      <div class="btn-col">
+        <button class="btn btn-primary btn-block" id="remDrink">Đã uống</button>
+        <button class="btn btn-ghost btn-block" id="remSnooze">Nhắc lại sau 10 phút</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
