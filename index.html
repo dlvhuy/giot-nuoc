@@ -86,6 +86,7 @@
 
   <!-- ============ ỨNG DỤNG ============ -->
   <div id="app" class="app" hidden>
+   <div class="content">
     <header class="topbar">
       <div>
         <p class="hello" id="hello">Chào bạn</p>
@@ -112,7 +113,8 @@
 
     <main>
       <!-- HÔM NAY -->
-      <section class="screen" id="tab-today" data-tab="today">
+      <section class="screen split split-today" id="tab-today" data-tab="today">
+       <div class="col">
         <div class="card hero">
           <div class="bottle" aria-hidden="true">
             <div class="bottle-cap"></div>
@@ -142,7 +144,9 @@
             <button class="btn btn-ghost" type="submit">Thêm</button>
           </form>
         </div>
+       </div>
 
+       <div class="col">
         <div class="card reminder-card">
           <div>
             <p class="muted small">Lần nhắc tiếp theo</p>
@@ -156,6 +160,7 @@
           <h2>Hôm nay bạn đã uống</h2>
           <ul class="timeline" id="timeline"></ul>
         </div>
+       </div>
       </section>
 
       <!-- LỊCH SỬ -->
@@ -166,6 +171,7 @@
           <div class="stat"><p class="muted small">Ngày đạt / 7</p><p class="stat-v" id="statHit">0</p></div>
         </div>
 
+       <div class="split split-history">
         <div class="card">
           <h2>Lượng nước 7 ngày qua</h2>
           <p class="muted small">Đường nét đứt là mục tiêu mỗi ngày</p>
@@ -177,11 +183,13 @@
           <h2>Huy hiệu</h2>
           <div class="badges" id="badges"></div>
         </div>
+       </div>
       </section>
 
       <!-- CÀI ĐẶT -->
-      <section class="screen" id="tab-settings" data-tab="settings" hidden>
-        <div id="settingsMount"></div>
+      <section class="screen split split-settings" id="tab-settings" data-tab="settings" hidden>
+        <div class="col" id="settingsMount"></div>
+       <div class="col">
         <div class="card">
           <h2>Thông báo</h2>
           <p class="muted small" id="notifStatus"></p>
@@ -219,13 +227,22 @@
             <button class="btn btn-danger" id="resetBtn">Xóa toàn bộ</button>
           </div>
         </div>
+       </div>
       </section>
     </main>
+   </div>
 
+    <!-- Điện thoại: thanh tab dưới đáy · Máy tính: thanh điều hướng bên trái -->
     <nav class="tabbar" aria-label="Điều hướng">
-      <button data-go="today" class="active"><span>💧</span>Hôm nay</button>
+      <div class="brand"><img src="icon.svg" alt=""><span>Giọt Nước</span></div>
+      <button data-go="today" class="active" aria-current="page"><span>💧</span>Hôm nay</button>
       <button data-go="history"><span>📊</span>Lịch sử</button>
       <button data-go="settings"><span>⚙️</span>Cài đặt</button>
+      <div class="nav-today" aria-hidden="true">
+        <p class="muted small">Hôm nay</p>
+        <p class="nav-today-v"><b id="navDrunk">0</b> / <span id="navGoal">2.000</span> ml</p>
+        <div class="nav-bar"><i id="navBar"></i></div>
+      </div>
     </nav>
   </div>
 

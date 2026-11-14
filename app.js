@@ -391,6 +391,10 @@ function renderToday() {
   $('goalLabel').textContent = fmt(goal());
   $('percent').textContent = `${pct}% mục tiêu`;
   $('water').style.height = `${pct}%`;
+  // Tiến độ nhỏ trên thanh điều hướng bên trái (chỉ hiện trên máy tính)
+  $('navDrunk').textContent = fmt(done);
+  $('navGoal').textContent = fmt(goal());
+  $('navBar').style.width = `${pct}%`;
 
   // Chỉ báo tiến độ so với lượng "lẽ ra" phải uống đến giờ này
   const pace = $('pace');
@@ -533,14 +537,14 @@ function renderHistory() {
 function renderChart(days) {
   const box = $('chart');
   const W = Math.max(280, box.clientWidth || 320);
-  const H = 210;
+  const H = Math.max(210, box.clientHeight || 210);   // máy tính: biểu đồ cao hơn
   const padL = 34, padR = 6, padT = 18, padB = 26;
   const iw = W - padL - padR, ih = H - padT - padB;
   const max = Math.max(goal() * 1.2, ...days.map((d) => d.ml));
   const yMax = Math.ceil(max / 500) * 500;
   const y = (v) => padT + ih - (v / yMax) * ih;
   const slot = iw / days.length;
-  const bw = Math.min(30, slot * 0.55);
+  const bw = Math.min(W > 600 ? 44 : 30, slot * 0.55);
   const step = yMax > 3000 ? 1000 : 500;
 
   let grid = '';
@@ -690,7 +694,11 @@ form.addEventListener('submit', (e) => {
 /* ---------------- Điều hướng ---------------- */
 function showTab(name) {
   document.querySelectorAll('[data-tab]').forEach((s) => { s.hidden = s.dataset.tab !== name; });
-  document.querySelectorAll('.tabbar button').forEach((b) => b.classList.toggle('active', b.dataset.go === name));
+  document.querySelectorAll('.tabbar button').forEach((b) => {
+    const on = b.dataset.go === name;
+    b.classList.toggle('active', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
   $('tooltip').hidden = true;
   if (name === 'history') renderHistory();
   if (name === 'settings') fillForm(S.profile);
