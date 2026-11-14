@@ -2,6 +2,8 @@
 
 Trang web nhắc bạn uống đủ **2 lít nước mỗi ngày** bằng thông báo, chạy được trên máy tính và điện thoại (Android, iPhone).
 
+👉 **Dùng ngay:** https://dlvhuy.github.io/giot-nuoc/
+
 ## Chức năng
 - Đăng ký nhanh: tên, mục tiêu (mặc định 2000 ml), cỡ cốc, giờ thức dậy và đi ngủ, khoảng cách nhắc.
 - Ghi nhận lượng nước bằng 1 chạm, có hoàn tác, xem các lần uống trong ngày.
