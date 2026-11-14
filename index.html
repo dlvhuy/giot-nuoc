@@ -67,6 +67,8 @@
       <label class="field">
         <span>Nhắc mỗi</span>
         <select name="interval">
+          <option value="15">15 phút (chia rất nhỏ)</option>
+          <option value="20">20 phút</option>
           <option value="30">30 phút</option>
           <option value="45">45 phút</option>
           <option value="60" selected>60 phút</option>
@@ -74,6 +76,7 @@
           <option value="120">120 phút</option>
         </select>
       </label>
+      <p class="plan-preview" id="planPreview" aria-live="polite"></p>
 
       <label class="switch-row" data-settings-only>
         <span>Âm báo khi nhắc</span>
@@ -154,6 +157,16 @@
             <p class="muted small" id="nextAtLabel"></p>
           </div>
           <button class="btn btn-ghost nowrap" id="pauseBtn" title="Tạm dừng nhắc trong 1 giờ">⏸ Hoãn 1 giờ</button>
+        </div>
+
+        <!-- Mục tiêu được chia nhỏ theo các lần nhắc trong giờ thức -->
+        <div class="card plan-card">
+          <div class="card-head">
+            <h2>Kế hoạch hôm nay</h2>
+            <span class="muted small" id="planSummary"></span>
+          </div>
+          <p class="plan-note" id="planNote"></p>
+          <ol class="plan" id="plan" aria-label="Các mốc uống nước trong ngày"></ol>
         </div>
 
         <div class="card">

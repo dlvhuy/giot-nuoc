@@ -229,6 +229,34 @@ main { display: block; }
 .reminder-card { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
 .countdown { font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
+/* ---------- Kế hoạch chia nhỏ ---------- */
+.plan-note { font-size: .88rem; color: var(--ink-2); }
+.plan-note.behind { color: var(--warn); }
+.plan-note.done { color: var(--good); font-weight: 500; }
+.plan {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 6px;
+  max-height: 172px; overflow-y: auto;
+}
+.plan li {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 6px 2px; border-radius: 10px; background: var(--surface-2);
+  border: 1.5px solid transparent; font-variant-numeric: tabular-nums;
+}
+.plan .pt { font-size: .72rem; color: var(--ink-3); }
+.plan .pm { font-size: .85rem; font-weight: 600; }
+.plan li.done { background: var(--good-soft); }
+.plan li.done .pm { color: var(--good); }
+.plan li.late { background: var(--warn-soft); }
+.plan li.late .pm { color: var(--warn); }
+.plan li.next { border-color: var(--primary); background: var(--primary-soft); }
+.plan li.next .pm { color: var(--primary); }
+.plan-preview {
+  font-size: .82rem; color: var(--ink-2); background: var(--primary-soft);
+  border-radius: 12px; padding: 10px 12px; margin-top: -4px;
+}
+.plan-preview:empty { display: none; }
+
 /* ---------- Timeline ---------- */
 .timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .timeline li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }

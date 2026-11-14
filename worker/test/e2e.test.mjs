@@ -82,7 +82,10 @@ try {
     assert.equal(JSON.parse(Buffer.from(p, 'base64url')).aud, 'http://127.0.0.1:9911');
     const msg = decrypt(body);
     assert.match(msg.body, /Minh ơi, bạn đã uống 500\/2\.000 ml/);
-    assert.equal(msg.cup, 250);
+    // Nút "Đã uống" ghi đúng lượng nên uống lần này (được chia từ mục tiêu), không phải cả cốc
+    const sip = Number(msg.body.match(/Lần này uống khoảng ([\d.]+) ml/)[1].replace(/\./g, ''));
+    assert.equal(msg.cup, sip);
+    assert.ok(sip >= 50 && sip <= 1500, `sip=${sip}`);
     assert.equal(msg.sid, id);
   });
 

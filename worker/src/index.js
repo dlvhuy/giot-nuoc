@@ -106,10 +106,11 @@ async function remind(env, row, { test = false } = {}) {
   const p = JSON.parse(row.profile);
   const now = Date.now();
   const total = todayTotal(row, now);
-  const { title, body } = test
-    ? { title: 'Thông báo thử từ máy chủ 🔔', body: `${p.name.trim().split(/\s+/).pop()} ơi, Giọt Nước đã gửi được thông báo tới máy bạn. Lời nhắc sẽ đến cả khi bạn đã đóng trang.` }
-    : reminderText(p, total);
-  const payload = { title, body, cup: p.cup, sid: row.id, tok: row.token, at: now, test };
+  const { title, body, ml } = test
+    ? { title: 'Thông báo thử từ máy chủ 🔔', body: `${p.name.trim().split(/\s+/).pop()} ơi, Giọt Nước đã gửi được thông báo tới máy bạn. Lời nhắc sẽ đến cả khi bạn đã đóng trang.`, ml: p.cup }
+    : reminderText(p, total, now, row.tz_offset);
+  // `cup`: lượng ghi nhận khi bấm "Đã uống" trên thông báo = lượng nên uống lần này
+  const payload = { title, body, cup: ml, sid: row.id, tok: row.token, at: now, test };
   return sendPush(row, payload, vapid(env), { topic: 'giotnuoc', ttl: test ? 600 : 1800 });
 }
 

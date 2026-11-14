@@ -54,6 +54,48 @@ export function scheduleNext(from, minutes, p, off, totalToday, now = Date.now()
   return t;
 }
 
+/* ---------------- Chia nhỏ lượng nước (cùng quy tắc với app.js) ----------------
+   Mục tiêu được chia đều cho các lần nhắc còn lại trong giờ thức, ngừng nhắc 30 phút trước
+   giờ ngủ. Tính lại mỗi lần nhắc: uống thiếu thì các lần sau nhiều hơn một chút và ngược lại. */
+const STOP_BEFORE_SLEEP = 30 * 60000;
+const MIN_SIP = 30;
+
+/** Khung giờ thức đang chứa `t` (đang ngủ thì lấy khung của ngày chứa `t`). */
+function currentWindow(t, p, off) {
+  for (const k of [0, -1]) {
+    const [s, e] = awakeWindow(t + k * DAY, p, off);
+    if (t >= s && t < e) return [s, e];
+  }
+  return awakeWindow(t, p, off);
+}
+
+/** Số lần nhắc còn lại (kể cả lần ở thời điểm `now`) trước giờ ngừng nhắc. */
+export function slotsLeft(now, p, off) {
+  const [s, e] = currentWindow(now, p, off);
+  const last = Math.max(s, e - STOP_BEFORE_SLEEP);
+  const start = Math.max(now, s);
+  if (start > last) return 1;
+  return Math.floor((last - start) / (p.interval * 60000)) + 1;
+}
+
+/** Lượng nên uống ở lần nhắc này (ml, làm tròn 10) để đủ mục tiêu trước giờ ngủ. */
+export function portion(p, total, now, off) {
+  const remain = p.goal - total;
+  if (remain <= 0) return 0;
+  return Math.min(remain, Math.max(MIN_SIP, Math.ceil(remain / slotsLeft(now, p, off) / 10) * 10));
+}
+
+/** Diễn đạt lượng nước theo cốc của người dùng: "khoảng nửa cốc", "1 cốc"… */
+export function sipLabel(ml, cup) {
+  const r = ml / cup;
+  if (r < 0.35) return 'vài ngụm';
+  if (r < 0.65) return 'khoảng nửa cốc';
+  if (r < 0.85) return 'gần 1 cốc';
+  if (r < 1.2) return '1 cốc';
+  if (r < 1.4) return 'hơn 1 cốc';
+  return `${String(Math.round(r * 2) / 2).replace('.', ',')} cốc`;
+}
+
 const TITLES = [
   'Đến giờ uống nước rồi! 💧',
   'Cơ thể bạn đang khát đấy 🥤',
@@ -71,12 +113,15 @@ const TIPS = [
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const fmt = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-export function reminderText(p, total) {
-  const remain = Math.max(0, p.goal - total);
-  const cups = Math.ceil(remain / p.cup);
+/** Nội dung lời nhắc + lượng nên uống lần này (`ml`, dùng cho nút "Đã uống … ml"). */
+export function reminderText(p, total, now = Date.now(), off = 0) {
+  const ml = portion(p, total, now, off) || p.cup;
+  const n = slotsLeft(now, p, off);
   const name = p.name.trim().split(/\s+/).pop();
+  const rest = n > 1 ? `còn ${n} lần như vậy là đủ ${fmt(p.goal)} ml trước giờ ngủ` : 'lần cuối hôm nay, uống nốt là đủ';
   return {
     title: pick(TITLES),
-    body: `${name} ơi, bạn đã uống ${fmt(total)}/${fmt(p.goal)} ml. Uống thêm một cốc ${p.cup} ml nhé (còn ${cups} cốc). ${pick(TIPS)}`,
+    body: `${name} ơi, bạn đã uống ${fmt(total)}/${fmt(p.goal)} ml. Lần này uống khoảng ${fmt(ml)} ml (${sipLabel(ml, p.cup)}) nhé – ${rest}. ${pick(TIPS)}`,
+    ml,
   };
 }

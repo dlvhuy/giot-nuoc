@@ -153,6 +153,78 @@ function scheduleNext(from = Date.now(), minutes = S.profile.interval) {
   S.nextAt = t;
 }
 
+/* ---------------- Chia nhỏ lượng nước trong ngày ----------------
+   Mục tiêu (VD 2.000 ml) được chia đều cho các lần nhắc trong giờ thức; ngừng nhắc 30 phút
+   trước giờ ngủ để khỏi phải thức dậy giữa đêm. Lượng mỗi lần được tính lại liên tục:
+   uống thiếu thì các lần sau nhiều hơn một chút, uống dư thì ít đi (không dưới 30 ml).
+   Cùng quy tắc với máy chủ nhắc (worker/src/schedule.js). */
+const STOP_BEFORE_SLEEP = 30;   // phút
+const MIN_SIP = 30;             // ml – vài ngụm
+
+/** Khung giờ thức [bắt đầu, kết thúc] theo hồ sơ `p`, của ngày chứa `base`. */
+function windowFor(p, base) {
+  const s = atTime(p.wake, base).getTime();
+  let e = atTime(p.sleep, base).getTime();
+  if (e <= s) e += 86400000;
+  return [s, e];
+}
+/** Khung giờ thức đang diễn ra (đang ngủ thì lấy khung của hôm nay). */
+function currentWindow(p = S.profile, now = Date.now()) {
+  for (const off of [0, -1]) {
+    const b = new Date(now);
+    b.setDate(b.getDate() + off);
+    const [s, e] = windowFor(p, b);
+    if (now >= s && now < e) return [s, e];
+  }
+  return windowFor(p, new Date(now));
+}
+const lastSlotAt = ([s, e]) => Math.max(s, e - STOP_BEFORE_SLEEP * 60000);
+
+/** Số lần nhắc còn lại, kể cả lần ở thời điểm `now`. */
+function slotsLeft(now = Date.now(), p = S.profile) {
+  const w = currentWindow(p, now);
+  const start = Math.max(now, w[0]);
+  const last = lastSlotAt(w);
+  if (start > last) return 1;
+  return Math.floor((last - start) / (p.interval * 60000)) + 1;
+}
+
+/** Lượng nên uống ở lần này (ml, làm tròn 10) để đủ mục tiêu trước giờ ngủ. 0 = đã đủ. */
+function portion(now = Date.now()) {
+  const remain = goal() - totalOf();
+  if (remain <= 0) return 0;
+  return Math.min(remain, Math.max(MIN_SIP, Math.ceil(remain / slotsLeft(now) / 10) * 10));
+}
+
+/** Thời điểm của lần nhắc tới trong hôm nay (đã quá hạn hoặc sang ngày mai thì là bây giờ). */
+function upcomingAt(now = Date.now()) {
+  return S.nextAt > now && dayKey(new Date(S.nextAt)) === dayKey() ? S.nextAt : now;
+}
+
+/** Kế hoạch cả ngày: các mốc nhắc và lượng mỗi mốc, tổng đúng bằng mục tiêu. */
+function dayPlan(p = S.profile, now = Date.now()) {
+  const w = currentWindow(p, now);
+  const last = lastSlotAt(w);
+  const n = Math.floor((last - w[0]) / (p.interval * 60000)) + 1;
+  const r10 = (v) => Math.round(v / 10) * 10;
+  return Array.from({ length: n }, (_, i) => ({
+    t: w[0] + i * p.interval * 60000,
+    ml: r10((p.goal * (i + 1)) / n) - r10((p.goal * i) / n),   // làm tròn theo lũy kế → tổng = mục tiêu
+    cum: r10((p.goal * (i + 1)) / n),
+  }));
+}
+
+/** Diễn đạt lượng nước theo cốc của người dùng. */
+function sipLabel(ml, c = cup()) {
+  const r = ml / c;
+  if (r < 0.35) return 'vài ngụm';
+  if (r < 0.65) return 'khoảng nửa cốc';
+  if (r < 0.85) return 'gần 1 cốc';
+  if (r < 1.2) return '1 cốc';
+  if (r < 1.4) return 'hơn 1 cốc';
+  return `${String(Math.round(r * 2) / 2).replace('.', ',')} cốc`;
+}
+
 /** Nhắc lại sau 10 phút kể từ lúc bấm `from` (bấm trên thông báo có thể được xử lý muộn). */
 function snooze(from = Date.now()) {
   closeReminders();
@@ -202,24 +274,27 @@ function tick() {
 }
 
 /* ---------------- Gửi nhắc nhở ---------------- */
-function reminderText() {
+/** Nội dung lời nhắc + `ml`: lượng nên uống lần này (dùng cho nút "Đã uống … ml"). */
+function reminderText(now = Date.now()) {
   const done = totalOf();
-  const remain = Math.max(0, goal() - done);
-  const cups = Math.ceil(remain / cup());
+  const ml = portion(now) || cup();
+  const n = slotsLeft(now);
   const tip = TIPS[Math.floor(Math.random() * TIPS.length)];
+  const rest = n > 1 ? `còn ${n} lần như vậy là đủ ${fmt(goal())} ml trước giờ ngủ` : 'lần cuối hôm nay, uống nốt là đủ';
   return {
     title: TITLES[Math.floor(Math.random() * TITLES.length)],
-    body: `${firstName()} ơi, bạn đã uống ${fmt(done)}/${fmt(goal())} ml. Uống thêm một cốc ${cup()} ml nhé (còn ${cups} cốc). ${tip}`,
+    body: `${firstName()} ơi, bạn đã uống ${fmt(done)}/${fmt(goal())} ml. Lần này uống khoảng ${fmt(ml)} ml (${sipLabel(ml)}) nhé – ${rest}. ${tip}`,
+    ml,
   };
 }
 
 /** `forceSystem`: luôn gửi thông báo hệ thống (nút "Gửi thử"). Khi người dùng đang nhìn
     trang thì chỉ hiện hộp nhắc trong trang, không gửi thêm thông báo hệ thống để tránh nhắc trùng. */
 async function fireReminder({ forceSystem = false } = {}) {
-  const { title, body } = reminderText();
+  const { title, body, ml } = reminderText();
   const looking = document.visibilityState === 'visible' && document.hasFocus();
-  const shown = looking && !forceSystem ? false : await systemNotify(title, body);
-  if (!shown || document.visibilityState === 'visible') showModal(title, body);
+  const shown = looking && !forceSystem ? false : await systemNotify(title, body, ml);
+  if (!shown || document.visibilityState === 'visible') showModal(title, body, ml);
   if (S.profile.sound) chime();
   // Rung chỉ được phép sau khi người dùng đã chạm vào trang
   const touched = !navigator.userActivation || navigator.userActivation.hasBeenActive;
@@ -240,7 +315,7 @@ async function getReg() {
   return swReg;
 }
 
-async function systemNotify(title, body) {
+async function systemNotify(title, body, ml = cup()) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return false;
   const opts = {
     body,
@@ -251,9 +326,9 @@ async function systemNotify(title, body) {
     requireInteraction: !IS_MOBILE,
     vibrate: [200, 100, 200],
     // sid/tok: để Service Worker báo thao tác "Đã uống"/"Nhắc lại" cho máy chủ đẩy
-    data: { cup: cup(), sid: S.push && S.push.id, tok: S.push && S.push.token },
+    data: { cup: ml, sid: S.push && S.push.id, tok: S.push && S.push.token },
     actions: [
-      { action: 'drink', title: `Đã uống ${cup()} ml` },
+      { action: 'drink', title: `Đã uống ${ml} ml` },
       { action: 'snooze', title: `Nhắc lại sau ${SNOOZE_MIN} phút` },
     ],
   };
@@ -280,10 +355,11 @@ async function closeReminders() {
   } catch { /* bỏ qua */ }
 }
 
-function showModal(title, body) {
+function showModal(title, body, ml = cup()) {
   $('remTitle').textContent = title;
   $('remBody').textContent = body;
-  $('remDrink').textContent = `Đã uống ${cup()} ml`;
+  $('remDrink').textContent = `Đã uống ${ml} ml`;
+  $('remDrink').dataset.ml = ml;
   $('reminderModal').hidden = false;
   $('remDrink').focus();
 }
@@ -407,23 +483,26 @@ function renderToday() {
     const frac = Math.min(1, Math.max(0, (Date.now() - s) / (e - s)));
     const expected = Math.round((goal() * frac) / 50) * 50;
     const behind = expected - done;
-    const cups = Math.ceil(remain / cup());
     if (behind > 100) {
       pace.className = 'pace behind';
-      pace.textContent = `⚠ Đang chậm ${fmt(behind)} ml · còn ${cups} cốc`;
+      pace.textContent = `⚠ Đang chậm ${fmt(behind)} ml · còn ${fmt(remain)} ml`;
     } else {
       pace.className = 'pace ok';
-      pace.textContent = `✓ Đúng tiến độ · còn ${cups} cốc`;
+      pace.textContent = `✓ Đúng tiến độ · còn ${fmt(remain)} ml`;
     }
   }
 
-  // Nút thêm nhanh
-  const sizes = [cup(), ...[100, 200, 350, 500].filter((v) => v !== cup())].slice(0, 5);
+  // Nút thêm nhanh: nút chính là lượng nên uống lần này (theo kế hoạch chia nhỏ), rồi đến cốc của bạn
+  const sip = portion(upcomingAt());
+  const sizes = [...new Set([sip, cup(), 100, 200, 350, 500].filter((v) => v > 0))].slice(0, 5);
   const icon = (v) => (v <= 100 ? '💧' : v <= 250 ? '🥛' : v <= 350 ? '🥤' : '🍶');
+  const label = (v, i) => (i === 0 && sip ? `Lần này ${v}` : v === cup() ? `Cốc ${v}` : `+${v}`);
   $('quick').innerHTML = sizes.map((v, i) =>
     `<button type="button" data-ml="${v}" class="${i === 0 ? 'main' : ''}" aria-label="Thêm ${v} ml">
-       <span class="ico">${icon(v)}</span><span class="ml">${i === 0 ? 'Cốc ' : '+'}${v}</span>
+       <span class="ico">${icon(v)}</span><span class="ml">${label(v, i)}</span>
      </button>`).join('');
+
+  renderPlan();
 
   $('undoBtn').disabled = !(lastAdd && lastAdd.day === dayKey());
 
@@ -434,6 +513,54 @@ function renderToday() {
         `<li><span class="t">${hhmm(x.t)}</span><span class="v">${icon(x.ml)} ${fmt(x.ml)} ml</span>
          <button class="del" data-del="${x.id}" aria-label="Xóa lần uống ${fmt(x.ml)} ml lúc ${hhmm(x.t)}">✕</button></li>`).join('')
     : '<li class="empty">Chưa có lần uống nào. Bắt đầu với một cốc nước nhé!</li>';
+}
+
+/** Thẻ "Kế hoạch hôm nay": các mốc nhắc, lượng mỗi mốc, mốc nào đã đạt / bị trễ / sắp tới. */
+function renderPlan() {
+  const plan = dayPlan();
+  const done = totalOf();
+  const now = Date.now();
+  const avg = Math.round(goal() / plan.length / 10) * 10;
+  $('planSummary').textContent = `${plan.length} lần · ~${fmt(avg)} ml/lần`;
+
+  const note = $('planNote');
+  if (done >= goal()) {
+    note.className = 'plan-note done';
+    note.textContent = `🎉 Đã uống đủ ${fmt(goal())} ml. Ngày mai bắt đầu lúc ${S.profile.wake}.`;
+  } else {
+    const at = upcomingAt(now);
+    const sip = portion(at);
+    const n = slotsLeft(at);
+    let why = 'Đúng kế hoạch.';
+    if (sip > avg + 10) why = 'Bạn đang hơi chậm nên mỗi lần còn lại tăng một chút.';
+    else if (sip < avg - 10) why = 'Bạn đang nhanh hơn kế hoạch nên các lần sau uống ít lại.';
+    const slow = sip > 400 ? ' Uống từ từ, chia thành vài ngụm.' : '';
+    note.className = `plan-note${sip > avg + 10 ? ' behind' : ''}`;
+    note.textContent = `${at > now ? `Lần nhắc tới (${hhmm(at)})` : 'Bây giờ'}: uống khoảng ${fmt(sip)} ml (${sipLabel(sip)})` +
+      `${n > 1 ? `, còn ${n} lần nhắc` : ' – lần cuối hôm nay'}. ${why}${slow}`;
+  }
+
+  let nextMarked = false;
+  $('plan').innerHTML = plan.map((x) => {
+    const reached = done >= x.cum;
+    let cls = reached ? 'done' : x.t <= now ? 'late' : '';
+    if (!reached && x.t > now && !nextMarked) { cls = 'next'; nextMarked = true; }
+    const state = { done: 'đã đạt', late: 'chưa uống', next: 'sắp tới' }[cls] || '';
+    return `<li class="${cls}" title="${hhmm(x.t)}: ${x.ml} ml (cộng dồn ${fmt(x.cum)} ml)${state ? ` – ${state}` : ''}">
+      <span class="pt">${hhmm(x.t)}</span><span class="pm">${reached ? '✓ ' : ''}${x.ml}</span></li>`;
+  }).join('');
+}
+
+/** Xem trước cách chia trong form cài đặt / đăng ký (cập nhật khi đổi mục tiêu, giờ, khoảng nhắc). */
+function renderPlanPreview() {
+  const p = readForm();
+  const box = $('planPreview');
+  if (!p.wake || !p.sleep || p.wake === p.sleep || !p.interval) { box.textContent = ''; return; }
+  const plan = dayPlan(p, atTime(p.wake).getTime() + 1);
+  const avg = Math.round(p.goal / plan.length / 10) * 10;
+  box.textContent = `→ Nhắc ${plan.length} lần/ngày (${hhmm(plan[0].t)}–${hhmm(plan[plan.length - 1].t)}), ` +
+    `mỗi lần khoảng ${fmt(avg)} ml (${sipLabel(avg, p.cup)}) là đủ ${fmt(p.goal)} ml. ` +
+    `Ngừng nhắc ${STOP_BEFORE_SLEEP} phút trước giờ ngủ.`;
 }
 
 function renderReminder() {
@@ -455,7 +582,10 @@ function renderReminder() {
   const m = Math.floor((left % 3600) / 60);
   const s = left % 60;
   cd.textContent = h ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
-  label.textContent = `lúc ${hhmm(S.nextAt)}${sameDay ? '' : ' ngày mai'} · nhắc mỗi ${S.profile.interval} phút`;
+  // Lượng sẽ nhắc uống ở lần tới (lần tới rơi vào ngày mai thì lấy mức trung bình của kế hoạch)
+  const plan = sameDay ? null : dayPlan();
+  const sip = sameDay ? portion(S.nextAt) : Math.round(goal() / plan.length / 10) * 10;
+  label.textContent = `lúc ${hhmm(S.nextAt)}${sameDay ? '' : ' ngày mai'} · uống ~${fmt(sip)} ml · mỗi ${S.profile.interval} phút`;
 }
 
 function renderPermission() {
@@ -670,6 +800,8 @@ function readForm() {
   };
 }
 
+form.addEventListener('input', renderPlanPreview);
+
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const profile = readForm();
@@ -701,7 +833,7 @@ function showTab(name) {
   });
   $('tooltip').hidden = true;
   if (name === 'history') renderHistory();
-  if (name === 'settings') fillForm(S.profile);
+  if (name === 'settings') { fillForm(S.profile); renderPlanPreview(); }
   window.scrollTo({ top: 0 });
 }
 
@@ -750,7 +882,7 @@ $('timeline').addEventListener('click', (e) => {
 $('pauseBtn').addEventListener('click', pauseOneHour);
 $('enableNotif').addEventListener('click', askPermission);
 $('installBtn').addEventListener('click', installApp);
-$('remDrink').addEventListener('click', () => { addWater(cup()); checkNewBadges(); });
+$('remDrink').addEventListener('click', () => { addWater(Number($('remDrink').dataset.ml) || cup()); checkNewBadges(); });
 $('remSnooze').addEventListener('click', () => snooze());
 // Đóng hộp nhắc thì đóng luôn thông báo hệ thống cùng lượt và dừng nhấp nháy tiêu đề
 $('reminderModal').addEventListener('click', (e) => { if (e.target.id === 'reminderModal') closeReminders(); });
@@ -976,8 +1108,8 @@ function onPushMessage({ shown, payload = {} }) {
   if (payload.test) { if (!shown) showModal(payload.title, payload.body); return; }
   if (Date.now() >= S.nextAt) { scheduleNext(Date.now()); save({ sync: false }); }
   if (!shown) {
-    const { title, body } = reminderText();
-    showModal(title, body);
+    const { title, body, ml } = reminderText();
+    showModal(title, body, ml);
   }
   if (S.profile.sound) chime();
   setTimeout(pullPushState, 3000);
@@ -1034,6 +1166,7 @@ function init() {
   } else {
     $('onboarding').hidden = false;
     form.querySelector('[data-settings-only]').hidden = true;
+    renderPlanPreview();
   }
 
   // Xử lý thao tác bấm trên thông báo trước, rồi lấy lịch từ máy chủ, rồi mới kiểm tra lịch nhắc
