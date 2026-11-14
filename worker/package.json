@@ -1,0 +1,16 @@
+{
+  "name": "giot-nuoc-push",
+  "private": true,
+  "type": "module",
+  "description": "Máy chủ Web Push nhắc uống nước (Cloudflare Worker + D1 + Cron)",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "db:local": "wrangler d1 execute giot-nuoc --local --file schema.sql",
+    "db:remote": "wrangler d1 execute giot-nuoc --remote --file schema.sql",
+    "test": "node test/webpush.test.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.162.0"
+  }
+}

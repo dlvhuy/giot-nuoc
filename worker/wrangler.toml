@@ -1,0 +1,18 @@
+name = "giot-nuoc-push"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Chạy mỗi phút để gửi các lời nhắc đến hạn
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+VAPID_PUBLIC_KEY = "BK0uWWrqhDQ4OWYznAI6F4D-lWPSsFwAEW7dpIPNYv8UDwAZ1LPeZqTQUO8vTRuiYBdXJSaCCyKWOHCYFCGa7-w"
+VAPID_SUBJECT = "https://github.com/dlvhuy/giot-nuoc"
+ALLOWED_ORIGINS = "https://dlvhuy.github.io,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175"
+# VAPID_PRIVATE_KEY là bí mật: `npx wrangler secret put VAPID_PRIVATE_KEY` (khi chạy thử: tệp .dev.vars)
+
+[[d1_databases]]
+binding = "DB"
+database_name = "giot-nuoc"
+database_id = "00000000-0000-0000-0000-000000000000" # thay bằng id thật sau `wrangler d1 create giot-nuoc`

@@ -189,6 +189,27 @@
           <div class="btn-row">
             <button class="btn btn-ghost" id="testNotif">🔔 Gửi thử thông báo</button>
           </div>
+
+          <!-- Nhắc qua máy chủ (Web Push) – hiện khi push-config.js đã có địa chỉ máy chủ -->
+          <div class="push-box" id="pushBox" hidden>
+            <label class="switch-row">
+              <span>Nhắc cả khi đã đóng trang<br><small class="muted">Giống Zalo/Facebook: thông báo hiện ở góc màn hình dù bạn đã tắt tab.</small></span>
+              <input type="checkbox" id="pushToggle" class="switch">
+            </label>
+            <p class="muted small" id="pushStatus"></p>
+            <div class="btn-row">
+              <button class="btn btn-ghost" id="testPush" hidden>📡 Gửi thử từ máy chủ</button>
+            </div>
+            <details class="pc-tip" id="pcTip">
+              <summary>💻 Trên máy tính: nhận thông báo cả khi đã đóng hết cửa sổ trình duyệt</summary>
+              <ul>
+                <li><b>Chrome:</b> Cài đặt → Hệ thống → bật <i>“Tiếp tục chạy ứng dụng nền khi Google Chrome đóng”</i>.</li>
+                <li><b>Edge:</b> Cài đặt → Hệ thống và hiệu suất → bật <i>“Tăng tốc khởi động”</i> và <i>“Tiếp tục chạy tiện ích mở rộng và ứng dụng nền khi Microsoft Edge đóng”</i>.</li>
+                <li><b>Windows:</b> Cài đặt → Hệ thống → Thông báo → bật thông báo cho Chrome/Edge và tắt <i>Không làm phiền</i>.</li>
+                <li>Cài Giọt Nước như ứng dụng (biểu tượng ⊕ trên thanh địa chỉ) để thông báo mang tên và biểu tượng riêng.</li>
+              </ul>
+            </details>
+          </div>
         </div>
         <div class="card">
           <h2>Dữ liệu</h2>
@@ -223,6 +244,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+  <script src="push-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
