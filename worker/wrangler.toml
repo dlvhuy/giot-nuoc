@@ -15,4 +15,4 @@ ALLOWED_ORIGINS = "https://dlvhuy.github.io,http://localhost:5173,http://127.0.0
 [[d1_databases]]
 binding = "DB"
 database_name = "giot-nuoc"
-database_id = "00000000-0000-0000-0000-000000000000" # thay bằng id thật sau `wrangler d1 create giot-nuoc`
+database_id = "35486b80-08e2-4b52-bc6e-3f3740580e36"

@@ -19,6 +19,20 @@ Trang web nhắc bạn uống đủ **2 lít nước mỗi ngày** bằng thông
 
 > Điện thoại tạm dừng trang khi tắt màn hình hoặc chuyển sang ứng dụng khác, nên lời nhắc chỉ đến khi Giọt Nước đang mở (kể cả ở chế độ nền ngắn). Lời nhắc bị lỡ sẽ hiện ngay khi bạn mở lại. Muốn nhắc cả khi đã đóng hẳn ứng dụng cần máy chủ gửi Web Push (giai đoạn 2 trong [KE_HOACH.md](KE_HOACH.md)).
 
+## Nhắc cả khi đã đóng trang (Web Push – giống Zalo/Facebook)
+Bật trong **Cài đặt → Nhắc cả khi đã đóng trang**. Máy chủ ở thư mục [`worker/`](worker/) (Cloudflare Worker + D1, cron mỗi phút) gửi tin đẩy đúng giờ; trình duyệt hiện thông báo ở góc màn hình kể cả khi tab đã đóng.
+
+Trên Windows, trình duyệt phải còn chạy (kể cả chạy nền):
+- **Chrome:** Cài đặt → Hệ thống → bật *“Tiếp tục chạy ứng dụng nền khi Google Chrome đóng”*.
+- **Edge:** Cài đặt → Hệ thống và hiệu suất → bật *“Tăng tốc khởi động”* và *“Tiếp tục chạy tiện ích mở rộng và ứng dụng nền…”*.
+- **Windows:** Cài đặt → Hệ thống → Thông báo → cho phép Chrome/Edge, tắt *Không làm phiền*.
+
+Triển khai lại máy chủ:
+
+```bash
+cd worker && npm install && npm test && npx wrangler deploy
+```
+
 ## Chạy trên máy
 Thông báo cần `localhost` hoặc HTTPS:
 
